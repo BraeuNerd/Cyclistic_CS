@@ -1,0 +1,94 @@
+---
+title: "Data cleaning & exploratory analysis"
+author: "Maria Braeuner"
+date: "11/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r LoadPackages, include=FALSE}
+
+library(tidyverse)
+
+```
+
+This document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis.
+
+```{r LoadData, include=FALSE}
+
+#Load Data
+
+Nov20 <- read_csv("Data/202011-divvy-tripdata.csv")
+Dec20 <- read_csv("Data/202012-divvy-tripdata.csv")
+Jan21 <- read_csv("Data/202101-divvy-tripdata.csv")
+Feb21 <- read_csv("Data/202102-divvy-tripdata.csv")
+Mar21 <- read_csv("Data/202103-divvy-tripdata.csv")
+Apr21 <- read_csv("Data/202104-divvy-tripdata.csv")
+May21 <- read_csv("Data/202105-divvy-tripdata.csv")
+Jun21 <- read_csv("Data/202106-divvy-tripdata.csv")
+Jul21 <- read_csv("Data/202107-divvy-tripdata.csv")
+Ago21 <- read_csv("Data/202108-divvy-tripdata.csv")
+Sep21 <- read_csv("Data/202109-divvy-tripdata.csv")
+Oct21 <- read_csv("Data/202110-divvy-tripdata.csv")
+
+#Check all df's have the same structure: check if all column names
+#are the same (e.g. would make it easier to merge into one dataframe)
+colnames(Nov20) == colnames(Dec20)
+colnames(Nov20) == colnames(Jan21)
+colnames(Nov20) == colnames(Feb21)
+colnames(Nov20) == colnames(Mar21)
+colnames(Nov20) == colnames(Apr21)
+colnames(Nov20) == colnames(May21)
+colnames(Nov20) == colnames(Jun21)
+colnames(Nov20) == colnames(Jul21)
+colnames(Nov20) == colnames(Ago21)
+colnames(Nov20) == colnames(Sep21)
+colnames(Nov20) == colnames(Oct21)
+
+#check for data types
+glimpse(Nov20)
+
+unique(Nov20$rideable_type) #check categories of rideable_type (electric_bike & docked_bike)
+length(unique(Nov20$start_station_name)) #check how many stations (666)
+length(unique(Nov20$end_station_name)) #check how many stations (658)
+unique(Nov20$member_casual) #check categories (e.g. in case of any typo or others)
+
+head(Nov20)
+```
+
+The data available for each df: `colnames(Nov20)`
+
+With the following data types: `glimpse(Nov20)`
+
+```{r MergeData, include=FALSE}
+
+#Merge into one df
+cyclistic12 <- rbind(Nov20, Dec20, Jan21, Feb21,
+                     Mar21, Apr21, May21, Jun21,
+                     Jul21, Ago21, Sep21, Oct21)
+
+head(cyclistic12)
+dim(cyclistic12)
+```
+
+```{r CleanData, include=FALSE}
+
+#Pre-clean:
+summary(cyclistic12) 
+#some data types are not correct
+###rideable_type is as string, convert to factor
+###member_casual is as string, convert to factor
+#end dates include 3 days of November 2021 (remove those days)
+
+#correct data types:
+cyclistic12$rideable_type <- as.factor(cyclistic12$rideable_type)
+cyclistic12$member_casual <- as.factor(cyclistic12$member_casual)
+
+#filter out extra dates
+
+
+
+```
