@@ -12,10 +12,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r LoadPackages, include=FALSE}
 
 library(tidyverse)
+library(lubridate)
 
 ```
 
 This document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis.
+
+# Import Data
 
 ```{r LoadData, include=FALSE}
 
@@ -48,21 +51,14 @@ colnames(Nov20) == colnames(Ago21)
 colnames(Nov20) == colnames(Sep21)
 colnames(Nov20) == colnames(Oct21)
 
-#check for data types
-glimpse(Nov20)
 
-unique(Nov20$rideable_type) #check categories of rideable_type (electric_bike & docked_bike)
-length(unique(Nov20$start_station_name)) #check how many stations (666)
-length(unique(Nov20$end_station_name)) #check how many stations (658)
-unique(Nov20$member_casual) #check categories (e.g. in case of any typo or others)
-
-head(Nov20)
 ```
 
 The data available for each df: `colnames(Nov20)`
 
 With the following data types: `glimpse(Nov20)`
 
+# Merge Data 
 ```{r MergeData, include=FALSE}
 
 #Merge into one df
@@ -71,24 +67,58 @@ cyclistic12 <- rbind(Nov20, Dec20, Jan21, Feb21,
                      Jul21, Ago21, Sep21, Oct21)
 
 head(cyclistic12)
-dim(cyclistic12)
+tail(cyclistic12)
+dim(cyclistic12) # 5,378,834 x 13
+
 ```
+
+# Clean & prepare data for analysis
 
 ```{r CleanData, include=FALSE}
 
-#Pre-clean:
-summary(cyclistic12) 
-#some data types are not correct
-###rideable_type is as string, convert to factor
-###member_casual is as string, convert to factor
-#end dates include 3 days of November 2021 (remove those days)
-
-#correct data types:
+#check for data types
+glimpse(cyclistic12) #rideable_type & member_casual are as chr, change to factors
 cyclistic12$rideable_type <- as.factor(cyclistic12$rideable_type)
 cyclistic12$member_casual <- as.factor(cyclistic12$member_casual)
+glimpse(cyclistic12) #ok
 
-#filter out extra dates
+summary(cyclistic12)
+#ended_at includes 3 days of November 2021 (remove)
+#end_lat & end_lang have 4831 NA's
+#rideable_type categories: classic_bike, docked_bike, electric_bike
+
+length(unique(cyclistic12$start_station_name)) #check how many stations (815)
+length(unique(cyclistic12$end_station_name)) #check how many stations (812)
+
+cyclistic <- cyclistic12 %>%
+  filter(ended_at <= "2021-11-01 00:00:00")
+
+summary(cyclistic)
+
+#Add new columns for: Day, Month, Year, DayOfWeek (DOW), Season, ride_length
+cyclistic$date <- as.Date(cyclistic$started_at) #yyyy-mm-dd
+cyclistic$month <- format(as.Date(cyclistic$date), "%m")
+cyclistic$day <- format(as.Date(cyclistic$date), "%d")
+cyclistic$year <- format(as.Date(cyclistic$date), "%Y")
+cyclistic$dow <- format(as.Date(cyclistic$date), "%A")
+cyclistic$ride_length <- difftime(cyclistic$ended_at, cyclistic$started_at)
 
 
+head(cyclistic)
+glimpse(cyclistic)
+
+#convert ride_length to numeric
+cyclistic$ride_length <- as.numeric(cyclistic$ride_length)
+
+summary(cyclistic) #there are negative ride_length vals.
+
+cyclistic[cyclistic$ride_length <0, ] # 1393 negatives; started_at & ended_at could be inverted, but not sure. 
+
+##Exclude these rows.
+final_data <- cyclistic[!cyclistic$ride_length <0, ]
+
+dim(cyclistic) # 5378531 x 18
+dim(final_data) # 5377138 x 18
+# 5378531 - 5377138 = 1393 = ok
 
 ```
