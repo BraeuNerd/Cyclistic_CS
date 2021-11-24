@@ -94,15 +94,24 @@ cyclistic <- cyclistic12 %>%
   filter(ended_at <= "2021-11-01 00:00:00")
 
 summary(cyclistic)
+dim(cyclistic) #5,378.531 x 13
 
-#Add new columns for: Day, Month, Year, DayOfWeek (DOW), Season, ride_length
+#Add new columns for: Day, Month, Year, DayOfWeek (dow), time of day (tod), Season, ride_length
 cyclistic$date <- as.Date(cyclistic$started_at) #yyyy-mm-dd
 cyclistic$month <- format(as.Date(cyclistic$date), "%m")
+cyclistic$month <- as.numeric(cyclistic$month)
 cyclistic$day <- format(as.Date(cyclistic$date), "%d")
 cyclistic$year <- format(as.Date(cyclistic$date), "%Y")
 cyclistic$dow <- format(as.Date(cyclistic$date), "%A")
+cyclistic$tod <- format(cyclistic$started_at, "%H:%M:%S")
 cyclistic$ride_length <- difftime(cyclistic$ended_at, cyclistic$started_at)
 
+cyclistic$season <- "Winter"
+cyclistic$season[cyclistic$month>2&cyclistic$month<6] <- "Spring"
+cyclistic$season[cyclistic$month>5&cyclistic$month<9] <- "Summer"
+cyclistic$season[cyclistic$month>8&cyclistic$month<12] <- "Autumn"
+cyclistic$season <- as.factor(cyclistic$season)
+summary(cyclistic$season)
 
 head(cyclistic)
 glimpse(cyclistic)
@@ -115,10 +124,19 @@ summary(cyclistic) #there are negative ride_length vals.
 cyclistic[cyclistic$ride_length <0, ] # 1393 negatives; started_at & ended_at could be inverted, but not sure. 
 
 ##Exclude these rows.
-final_data <- cyclistic[!cyclistic$ride_length <0, ]
+Cyclistic_Data <- cyclistic[!cyclistic$ride_length <0, ]
 
-dim(cyclistic) # 5378531 x 18
-dim(final_data) # 5377138 x 18
+dim(cyclistic) # 5378531 x 21
+dim(Cyclistic_Data) # 5377138 x 21
 # 5378531 - 5377138 = 1393 = ok
+
+
+```
+# Save to csv for analysis
+
+```{r SaveCSV}
+
+write.csv(Cyclistic_Data, "Data/CyclisticData.csv")
+
 
 ```
