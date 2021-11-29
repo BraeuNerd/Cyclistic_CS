@@ -1,0 +1,257 @@
+---
+title: "Data cleaning"
+author: "Maria Braeuner"
+date: "11/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r LoadPackages, results="hide", warning=FALSE, message=FALSE}
+
+library(tidyverse) 
+library(lubridate) #date functions
+
+```
+
+The first part of this document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis. The second part is the initial exploratory analysis. Final analysis/results in CS1_Cyclistic_Report.Rmd. 
+
+## Preparing
+### Import Data
+
+```{r LoadData, results="hide", warning=FALSE, message=FALSE}
+
+#Load Data
+
+Nov20 <- read_csv("Data/202011-divvy-tripdata.csv")
+Dec20 <- read_csv("Data/202012-divvy-tripdata.csv")
+Jan21 <- read_csv("Data/202101-divvy-tripdata.csv")
+Feb21 <- read_csv("Data/202102-divvy-tripdata.csv")
+Mar21 <- read_csv("Data/202103-divvy-tripdata.csv")
+Apr21 <- read_csv("Data/202104-divvy-tripdata.csv")
+May21 <- read_csv("Data/202105-divvy-tripdata.csv")
+Jun21 <- read_csv("Data/202106-divvy-tripdata.csv")
+Jul21 <- read_csv("Data/202107-divvy-tripdata.csv")
+Ago21 <- read_csv("Data/202108-divvy-tripdata.csv")
+Sep21 <- read_csv("Data/202109-divvy-tripdata.csv")
+Oct21 <- read_csv("Data/202110-divvy-tripdata.csv")
+
+#Check all df's have the same structure: check if all column names
+#are the same (e.g. would make it easier to merge into one dataframe)
+colnames(Nov20) == colnames(Dec20)
+colnames(Nov20) == colnames(Jan21)
+colnames(Nov20) == colnames(Feb21)
+colnames(Nov20) == colnames(Mar21)
+colnames(Nov20) == colnames(Apr21)
+colnames(Nov20) == colnames(May21)
+colnames(Nov20) == colnames(Jun21)
+colnames(Nov20) == colnames(Jul21)
+colnames(Nov20) == colnames(Ago21)
+colnames(Nov20) == colnames(Sep21)
+colnames(Nov20) == colnames(Oct21)
+# all TRUE
+
+```
+
+The data available for each df: `r colnames(Nov20)`
+
+
+## Merge Data 
+```{r MergeData, results="hide", warning=FALSE, message=FALSE}
+
+#Merge into one df
+cyclistic12 <- rbind(Nov20, Dec20, Jan21, Feb21,
+                     Mar21, Apr21, May21, Jun21,
+                     Jul21, Ago21, Sep21, Oct21)
+#Check:
+head(cyclistic12)
+tail(cyclistic12)
+dim(cyclistic12) # 5,378,834 x 13
+
+```
+
+`r head(cyclistic12)`
+
+## Clean & prepare data for analysis
+
+```{r CleanData, results="hide", warning=FALSE, message=FALSE}
+
+#check for data types
+glimpse(cyclistic12) #rideable_type & member_casual are as chr, change to factors
+cyclistic12$rideable_type <- as.factor(cyclistic12$rideable_type)
+cyclistic12$member_casual <- as.factor(cyclistic12$member_casual)
+glimpse(cyclistic12) #ok
+
+summary(cyclistic12)
+#ended_at includes 3 days of November 2021 (remove)
+#end_lat & end_lang have 4831 NA's
+#rideable_type categories: classic_bike, docked_bike, electric_bike
+#member_casual categories: member & casual
+
+length(unique(cyclistic12$start_station_name)) #check how many stations (815)
+length(unique(cyclistic12$end_station_name)) #check how many stations (812)
+
+#filter out the extra days of Nov2021
+cyclistic <- cyclistic12 %>%
+  filter(ended_at <= "2021-11-01 00:00:00")
+
+summary(cyclistic)
+dim(cyclistic) #5,378.531 x 13 - ok
+
+#Add new columns for: Day, Month, Year, DayOfWeek (dow), time of day (tod) & tod_char, Season, ride_length
+cyclistic$date <- as.Date(cyclistic$started_at) #yyyy-mm-dd
+cyclistic$month <- format(as.Date(cyclistic$date), "%m")
+cyclistic$month <- as.numeric(cyclistic$month) #helps to create Seasons column;
+cyclistic$day <- format(as.Date(cyclistic$date), "%d")
+cyclistic$year <- format(as.Date(cyclistic$date), "%Y")
+cyclistic$dow <- format(as.Date(cyclistic$date), "%A")
+cyclistic$tod <- format(cyclistic$started_at, "%H:%M:%S")
+cyclistic$ride_length <- difftime(cyclistic$ended_at, cyclistic$started_at) #in seconds
+cyclistic$ride_length <- as.numeric(cyclistic$ride_length)
+cyclistic$ride_length_min <- cyclistic$ride_length/60 #in min
+
+cyclistic$season <- "Winter"
+cyclistic$season[cyclistic$month>2&cyclistic$month<6] <- "Spring"
+cyclistic$season[cyclistic$month>5&cyclistic$month<9] <- "Summer"
+cyclistic$season[cyclistic$month>8&cyclistic$month<12] <- "Autumn"
+cyclistic$season <- as.factor(cyclistic$season)
+summary(cyclistic$season)
+
+# Reference used here: 
+##Morning=[05:00-11:59] ; Afternoon=[12:00-17:59] ; Evening=[18:00-21:59] ; Night=[22:00-04:59]
+
+tod_char <- format(cyclistic$started_at, "%H")
+tod_char <- as.numeric(tod_char)
+cyclistic$tod_char <- "Night"
+cyclistic$tod_char[tod_char<12&tod_char>=5] <- "Morning"
+cyclistic$tod_char[tod_char>=18&tod_char<22] <- "Evening"
+cyclistic$tod_char[tod_char>=12&tod_char<18] <- "Afternoon"
+cyclistic$tod_char <- as.factor(cyclistic$tod_char)
+
+summary(cyclistic$tod_char)
+glimpse(cyclistic)
+
+summary(cyclistic) #there are negative ride_length vals.
+
+cyclistic[cyclistic$ride_length_min <0, ] # 1393 negatives; started_at & ended_at could be inverted, but not sure, better ignore.
+
+##Exclude these rows.
+Cyclistic_Data <- cyclistic[!cyclistic$ride_length <0, ]
+
+dim(cyclistic) # 5378531 x 23
+dim(Cyclistic_Data) # 5377138 x 23
+# 5378531 - 5377138 = 1393 = ok
+
+#ride_id should not have duplicates:
+length(Cyclistic_Data$ride_id) #5377138
+n_distinct(Cyclistic_Data$ride_id) #5377138 ok!
+
+max(Cyclistic_Data$ride_length_min) #55944.14, this is over 38 days.
+#how many ride lenghts exceed 24 hours?
+Cyclistic_Data %>%
+  summarize(weird_lengths = which(ride_length_min>1440))
+#there are 3,800 trips of over 24 hours
+# who's doing 24+? Check:
+long_rides <- Cyclistic_Data %>%
+  group_by(member_casual) %>%
+  summarize(Long_Ride_Length = which(ride_length_min>1440))
+
+long_rides <- long_rides %>%
+  group_by(member_casual) %>%
+  summarize(n = n(),
+            mean_length = mean(Long_Ride_Length))
+
+#Station names have some that were tests and some NAs
+##Remove testing rows. Leave NAs for now (some don't have station name but lat,lon)
+CyclisticData <- Cyclistic_Data[!grepl("TEST",Cyclistic_Data$start_station_name), ]
+
+CyclisticData <- CyclisticData[!grepl("TEST",CyclisticData$end_station_name), ]
+
+CyclisticData <- CyclisticData[!grepl("TEST",CyclisticData$start_station_id), ]
+
+CyclisticData <- CyclisticData[!grepl("TEST",CyclisticData$end_station_id), ]
+
+rideable_type_check <- CyclisticData %>%
+  group_by(month, year) %>%
+  select(rideable_type, month, year) %>%
+  count(rideable_type)
+
+rideable_type_check
+
+#order dow by dow instead of alphabetically:
+CyclisticData$dow <- ordered(CyclisticData$dow, levels=c("Monday",
+                                                         "Tuesday",
+                                                         "Wednesday",
+                                                         "Thursday",
+                                                         "Friday",
+                                                         "Saturday",
+                                                         "Sunday"))
+
+
+```
+
+Keep in mind for analysis:  
+* Rideable_type for November 2020 includes only 2 categories: docked and electric; "classic_bike" appears from December 2020 onward.
+* Reference used for "Time of Day" (tod_char): 
+  + Morning = [05:00-11:59]
+  + Afternoon = [12:00-17:59]
+  + Evening = [18:00-21:59]
+  + Night = [22:00-04:59]
+* There are 3,800 trips of over 24 hours still included in the dataset (mean_length = mean() of the length of all trips over 1440 minutes (24 hours), in minutes):
+`r long_rides`
+
+# Exploratory Analysis
+
+```{r, tidy=TRUE}
+
+head(CyclisticData)
+
+```
+
+```{r EA, warning=FALSE, message=FALSE, tidy=TRUE}
+
+#How do casual customers and members differ in:
+## Ride length ($ride_length &/or $ride_length_min)
+
+CyclisticData %>%
+  group_by(member_casual) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min))
+
+## Type of ride they use ($rideable_type)
+CyclisticData %>%
+  group_by(member_casual, rideable_type) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min))
+
+## Use by $season
+CyclisticData %>%
+  group_by(member_casual, season) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min))
+
+## Use by $tod ($tod_char)
+CyclisticData %>%
+  group_by(member_casual, tod_char) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min))
+
+## Use by $dow
+CyclisticData %>%
+  group_by(member_casual, dow) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min))
+
+
+CyclisticData %>%
+  group_by(member_casual, dow) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min)) %>%
+  ggplot(mapping = aes(x = dow, y = avg_duration_min, fill = member_casual)) +
+  geom_col(position="dodge")
+
+
+```
+
