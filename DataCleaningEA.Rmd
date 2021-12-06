@@ -18,8 +18,8 @@ library(lubridate) #date functions
 
 The first part of this document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis. The second part is the initial exploratory analysis. Final analysis/results in CS1_Cyclistic_Report.Rmd. 
 
-## Preparing
-### Import Data
+### Preparing
+#### Import Data
 
 ```{r LoadData, results="hide", warning=FALSE, message=FALSE}
 
@@ -58,7 +58,7 @@ colnames(Nov20) == colnames(Oct21)
 The data available for each df: `r colnames(Nov20)`
 
 
-## Merge Data 
+### Merge Data 
 ```{r MergeData, results="hide", warning=FALSE, message=FALSE}
 
 #Merge into one df
@@ -72,11 +72,15 @@ dim(cyclistic12) # 5,378,834 x 13
 
 ```
 
-`r head(cyclistic12)`
+```{r tib1} 
 
-## Clean & prepare data for analysis
+head(cyclistic12)
 
-```{r CleanData, results="hide", warning=FALSE, message=FALSE}
+```
+
+### Clean & prepare data for analysis
+
+```{r CleanData, message=FALSE, warning=FALSE, results="hide"}
 
 #check for data types
 glimpse(cyclistic12) #rideable_type & member_casual are as chr, change to factors
@@ -161,7 +165,7 @@ long_rides <- Cyclistic_Data %>%
 long_rides <- long_rides %>%
   group_by(member_casual) %>%
   summarize(n = n(),
-            mean_length = mean(Long_Ride_Length))
+            mean_duration_minutes = mean(Long_Ride_Length))
 
 #Station names have some that were tests and some NAs
 ##Remove testing rows. Leave NAs for now (some don't have station name but lat,lon)
@@ -190,17 +194,39 @@ CyclisticData$dow <- ordered(CyclisticData$dow, levels=c("Monday",
                                                          "Sunday"))
 
 
+#order season
+CyclisticData$season <- ordered(CyclisticData$season,
+                                levels=c("Winter",
+                                         "Spring",
+                                         "Summer",
+                                         "Autumn"))
+
+
 ```
 
 Keep in mind for analysis:  
+
+
 * Rideable_type for November 2020 includes only 2 categories: docked and electric; "classic_bike" appears from December 2020 onward.
 * Reference used for "Time of Day" (tod_char): 
   + Morning = [05:00-11:59]
   + Afternoon = [12:00-17:59]
   + Evening = [18:00-21:59]
   + Night = [22:00-04:59]
-* There are 3,800 trips of over 24 hours still included in the dataset (mean_length = mean() of the length of all trips over 1440 minutes (24 hours), in minutes):
-`r long_rides`
+* There are 3,800 trips of over 24 hours still included in the dataset (mean_duration_minutes = mean() of the length of all trips over 1440 minutes (24 hours), in minutes):
+```{r long_rides }
+
+long_rides
+
+```
+
+Save cleaned data into a new .csv file.
+```{r SaveData, include=FALSE}
+
+#CyclisticData <- write.csv(CyclisticData, "Data/CyclisticData.csv")
+
+```
+
 
 # Exploratory Analysis
 
@@ -210,9 +236,9 @@ head(CyclisticData)
 
 ```
 
-```{r EA, warning=FALSE, message=FALSE, tidy=TRUE}
+How do casual customers and members differ in # of rides & average ride duration (in minutes)?
+```{r EA1, warning=FALSE, message=FALSE, tidy=TRUE}
 
-#How do casual customers and members differ in:
 ## Ride length ($ride_length &/or $ride_length_min)
 
 CyclisticData %>%
@@ -220,30 +246,52 @@ CyclisticData %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min))
 
+```
+
+How do casual customers and members differ in # of rides & average ride duration (in minutes) by ride_type used?
+```{r EA2, warning=FALSE, message=FALSE, tidy=TRUE}
 ## Type of ride they use ($rideable_type)
 CyclisticData %>%
   group_by(member_casual, rideable_type) %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min))
 
+```
+
+How do casual customers and members differ in # of rides & average ride duration (in minutes) by season?
+
+```{r EA3, warning=FALSE, message=FALSE, tidy=TRUE}
 ## Use by $season
 CyclisticData %>%
   group_by(member_casual, season) %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min))
 
+```
+
+How do casual customers and members differ in # of rides & average ride duration (in minutes) by time of day?
+```{r EA4, warning=FALSE, message=FALSE, tidy=TRUE}
 ## Use by $tod ($tod_char)
 CyclisticData %>%
   group_by(member_casual, tod_char) %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min))
 
+```
+
+How do casual customers and members differ in # of rides & average ride duration (in minutes) by day of the week?
+
+```{r EA5, warning=FALSE, message=FALSE, tidy=TRUE}
 ## Use by $dow
 CyclisticData %>%
   group_by(member_casual, dow) %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min))
 
+```
+
+
+```{r EAviz, warning=FALSE, message=FALSE, tidy=TRUE}
 
 CyclisticData %>%
   group_by(member_casual, dow) %>%
@@ -251,6 +299,40 @@ CyclisticData %>%
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = dow, y = avg_duration_min, fill = member_casual)) +
   geom_col(position="dodge")
+
+
+CyclisticData %>%
+  group_by(member_casual, dow) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min)) %>%
+  ggplot(mapping = aes(x = dow, y = no_rides, fill = member_casual)) +
+  geom_col(position="dodge")
+
+
+CyclisticData %>%
+  group_by(member_casual, tod_char) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min)) %>%
+  ggplot(mapping = aes(x = tod_char, y = avg_duration_min, fill = member_casual)) +
+  geom_col(position="dodge")
+
+CyclisticData %>%
+  group_by(member_casual, tod_char) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min)) %>%
+  ggplot(mapping = aes(x = tod_char, y = no_rides, fill = member_casual)) +
+  geom_col(position="dodge")
+
+
+
+CyclisticData %>%
+  group_by(member_casual, season) %>%
+  summarise(no_rides = n(),
+           avg_duration_min = mean(ride_length_min)) %>%
+  ggplot(mapping = aes(x = season, y = no_rides, fill = member_casual)) +
+  geom_col(position="dodge")
+
+
 
 
 ```
