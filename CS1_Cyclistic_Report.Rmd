@@ -1,0 +1,405 @@
+---
+title: "Cyclistic DA Report"
+author: "Maria Braeuner"
+date: "11/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+```{r LoadPackagesAndData, echo= T, error=F, warning=F, message=G, results="hide"}
+
+library(tidyverse)
+library(ggmap)
+library(viridis)
+
+CyclisticData <- read_csv("Data/CyclisticData.csv",
+                          col_types = cols(
+                            rideable_type = col_factor(),
+                            start_station_id = col_character(),
+                            end_station_id = col_character(),
+                            member_casual = col_factor(),
+                            dow = col_factor(),
+                            season = col_factor(),
+                            tod_char = col_factor()
+                          ))
+
+#set color palette for plots
+cols <- c("casual" = "#482677ff", "member" = "#b8de29ff")
+
+```
+
+
+## Business task
+
+Cyclistic is a (fictional) bike-share company based in Chicago. More than recruiting new customers to use Cyclistic, **there is a current interest in turning casual customers into annual members.** To support marketing strategies, we must first understand customer behavior. My task here is to gain insights and identify how casual riders and annual members use Cyclistic differently to support marketing decisions.
+
+## Description of data & cleaning process
+The company provides the historical trip data. The downloadable public data set has been made available by Motivate International Inc under a non-exclusive, royalty-free, limited, perpetual [license](https://www.divvybikes.com/data-license-agreement).
+
+The data used in this report corresponds to the last 12 months (November 2020 to October 2021). The raw data is organized in separate csv files, each one corresponding to one month of data, which includes the following columns: `r colnames(CyclisticData)`.
+
+I performed this entire task using R & RStudio. First I merged the 12 datasets into one data frame, corrected data types (e.g. casual_member from character to factor), & added columns that would help for further analysis (e.g. ride duration, time of day, day of the week, & season). Initially, there were several rows in which the company performed tests to the bikes, where "TEST" was part of the station_id or station names. These rows were removed. Detailed documentation of all [cleaning & manipulation of data can be found here](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/DataCleaningEA.Rmd)
+
+## Summary of analysis & visualizations
+
+```{r quickfix, message=FALSE, warning=FALSE, results="hide"}
+
+glimpse(CyclisticData)
+
+##order dow by dow instead of alphabetically:
+CyclisticData$dow <- ordered(CyclisticData$dow, levels=c("Monday",
+                                                         "Tuesday",
+                                                         "Wednesday",
+                                                         "Thursday",
+                                                         "Friday",
+                                                         "Saturday",
+                                                         "Sunday"))
+
+#order season
+CyclisticData$season <- ordered(CyclisticData$season,
+                                levels=c("Winter",
+                                         "Spring",
+                                         "Summer",
+                                         "Autumn"))
+
+#order tod_char
+CyclisticData$tod_char <- ordered(CyclisticData$tod_char,
+                                  levels=c("Morning",
+                                           "Afternoon",
+                                           "Evening",
+                                           "Night"))
+
+#order month
+
+CyclisticData$month <- ordered(CyclisticData$month,
+                                  levels=c("11",
+                                           "12",
+                                           "1",
+                                           "2",
+                                           "3",
+                                           "4",
+                                           "5", 
+                                           "6", 
+                                           "7", 
+                                           "8",
+                                           "9",
+                                           "10"))
+
+CyclisticData <- CyclisticData %>%
+  mutate(Month = ifelse(month == 11, "Nov20",
+                        ifelse(month == 12, "Dec20",
+                               ifelse(month == 1, "Jan21",
+                                      ifelse(month == 2, "Feb21",
+                                             ifelse(month == 3, "Mar21", 
+                                                    ifelse(month == 4, "Apr21", 
+                                                           ifelse(month == 5, "May21",
+                                                                  ifelse(month == 6, "Jun21", 
+                                                                         ifelse(month == 7, "Jul21", 
+                                                                                ifelse(month == 8, "Aug21",
+                                                                                       ifelse(month == 9, "Sep21",
+                                                                                              ifelse(month == 10, "Oct21", "ERR")))))))))))))
+
+CyclisticData$Month <- ordered(CyclisticData$Month,
+                               levels=c("Nov20", "Dec20", "Jan21",
+                                        "Feb21", "Mar21", "Apr21",
+                                        "May21", "Jun21", "Jul21",
+                                        "Aug21", "Sep21", "Oct21"))
+
+
+CyclisticData <- CyclisticData %>% 
+  mutate(hour = format(strptime(tod, "%H:%M:%S"), '%H'))
+
+
+```
+
+```{r analysis}
+
+NoRidesMonth <- CyclisticData %>%
+  group_by(member_casual, rideable_type, Month) %>%
+  summarise(no_rides = n(),
+            avg_ride_duration = mean(ride_length_min)) %>%
+  ggplot() +
+  geom_col(mapping = aes(x = Month, y = no_rides, fill=member_casual)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90)) +
+  labs(title = "Number of rides by type of customer and bike used",
+       subtitle = "from November 2020 to October 2021",
+       x = "Month", 
+       y = "Number of rides") +
+  scale_y_continuous(labels = scales::comma) +
+  scale_fill_manual(values = cols) +
+#  scale_color_viridis(discrete=T, option="viridis") + 
+  facet_grid(rideable_type ~ member_casual) 
+
+
+#Ride duration histogram for rides less than 24 hours long (3677 rows still over 24h)
+# hist_lab is for the geom_text
+hist_lab <- CyclisticData %>%
+  filter(ride_length_min <= 60) %>%
+  group_by(member_casual) %>%
+  summarise(n = paste("n = ", n()),
+            mean = paste("mean = ", round(mean(ride_length_min), digits=2)))
+  
+RideDuration <- CyclisticData %>%
+  filter(ride_length_min <= 60) %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x = ride_length_min, fill=member_casual),
+                 binwidth = 5,
+                 color = "black") +
+  scale_fill_manual(values = cols) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Histogram of number of rides by their duration for each type of customer",
+       subtitle = "from November 2020 to October 2021",
+       caption = "Only depicting rides under 60 minutes \n (5min bins)",
+       x = "minutes", 
+       y = "Number of rides") +
+  scale_y_continuous(labels = scales::comma) +
+  facet_grid(~ member_casual) +
+  geom_text(data = hist_lab,
+            mapping = aes(x = 50, y = 755500, label=n), 
+            size = 3.5)
+
+#Traffic by day
+
+DayTraffic <- CyclisticData %>%
+  group_by(member_casual, dow, hour) %>%
+  summarise(no_rides = n(),
+            avg_ride_duration = mean(ride_length_min)) %>%
+  ggplot() +
+  geom_col(mapping = aes(x = hour, y = no_rides, fill=member_casual)) +
+  scale_fill_manual(values = cols) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90)) +
+  labs(title = "Number of rides by time of day",
+       subtitle = "from November 2020 to October 2021",
+       x = "hour", 
+       y = "Number of rides") +
+  scale_y_continuous(labels = scales::comma) +
+  facet_grid(dow ~ member_casual) 
+
+
+DurationTraffic <- CyclisticData %>%
+  group_by(member_casual, dow, hour) %>%
+  summarise(no_rides = n(),
+            avg_ride_duration = mean(ride_length_min)) %>%
+  ggplot() +
+  geom_col(mapping = aes(x = hour, y = avg_ride_duration, fill=member_casual)) +
+  scale_fill_manual(values = cols) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90)) +
+  labs(title = "fix",
+       subtitle = "from November 2020 to October 2021",
+       x = "hour", 
+       y = "Number of rides",
+       fill = "Type of Customer") +
+  scale_y_continuous(labels = scales::comma) +
+  facet_grid(dow ~ member_casual) 
+
+
+#map stations
+
+chicagomap <- get_stamenmap(bbox = c(left = -87.8,
+                              bottom = 41.77,
+                              right = -87.5,
+                              top = 42),
+                     zoom = 11)
+
+ForMapping <- CyclisticData %>%
+  mutate(start_lat = round(start_lat, digits=3),
+         start_lng = round(start_lng, digits=3), 
+         end_lat = round(end_lat, digits=3),
+         end_lng = round(end_lng, digits=3)) %>%
+  group_by(start_lat, start_lng, end_lat, end_lng, member_casual) %>%
+  summarise(count = n())
+
+#Map: filter routes used <50 times (for map clarity)
+formapfiltered <- ForMapping %>%
+  filter(count > 365)
+
+map365 <- ggmap(chicagomap) +
+  geom_segment(formapfiltered,
+               mapping = aes(x = start_lng,
+                             y = start_lat,
+                             xend = end_lng,
+                             yend = end_lat,
+                             color = count, 
+                             alpha = count,
+                             size = count)) + 
+  geom_point(formapfiltered,
+             mapping = aes(x = start_lng, y = start_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#809848") +
+  geom_point(formapfiltered,
+             mapping = aes(x = end_lng, y = end_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#4f759b") +
+  facet_grid(~ member_casual) + 
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Customer travel routes") + 
+  theme_minimal() +
+  scale_colour_viridis(option = "viridis") + 
+  theme(legend.position = "none")
+
+#Top routes
+toproutes_casual <- formapfiltered %>%
+  filter(member_casual == "casual") %>%
+  arrange(desc(count)) %>%
+  head(100)
+
+toproutes_member <- formapfiltered %>%
+  filter(member_casual == "member") %>%
+  arrange(desc(count)) %>%
+  head(100)
+
+
+chicagozoom <- get_stamenmap(bbox = c(left = -87.7,
+                              bottom = 41.78,
+                              right = -87.5,
+                              top = 41.96),
+                     zoom = 11)
+
+
+casual100 <- ggmap(chicagozoom) +
+  geom_segment(toproutes_casual,
+               mapping = aes(x = start_lng,
+                             y = start_lat,
+                             xend = end_lng,
+                             yend = end_lat,
+                             color = count, 
+                             alpha = count,
+                             size = count)) + 
+  geom_point(toproutes_casual,
+             mapping = aes(x = start_lng, y = start_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#809848") +
+  geom_point(toproutes_casual,
+             mapping = aes(x = end_lng, y = end_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#4f759b") +
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Casual customer 100 most used travel routes") + 
+  theme_minimal() +
+  scale_colour_viridis(option = "viridis") + 
+  theme(legend.position = "none")
+
+member100 <- ggmap(chicagozoom) +
+  geom_segment(toproutes_member,
+               mapping = aes(x = start_lng,
+                             y = start_lat,
+                             xend = end_lng,
+                             yend = end_lat,
+                             color = count, 
+                             alpha = count,
+                             size = count)) + 
+  geom_point(toproutes_member,
+             mapping = aes(x = start_lng, y = start_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#809848") +
+  geom_point(toproutes_member,
+             mapping = aes(x = end_lng, y = end_lat), 
+             size = 1,
+             alpha = 0.5,
+             color = "#4f759b") +
+  labs(x = NULL, y = NULL, fill = NULL, 
+       title = "Members 100 most used travel routes") + 
+  theme_minimal() +
+  scale_colour_viridis(option = "viridis") + 
+  theme(legend.position = "none")
+
+
+TopStartStation <- CyclisticData %>%
+  filter(!is.na(start_station_id)) %>%
+  group_by(member_casual, start_station_id) %>%
+  summarise(count = n()) %>%
+  group_by(member_casual) %>%
+  filter(count == max(count)) %>%
+  ungroup()
+
+TopEndStation <- CyclisticData %>%
+  filter(!is.na(end_station_id)) %>%
+  group_by(member_casual, end_station_id) %>%
+  summarise(count = n()) %>%
+  group_by(member_casual) %>%
+  filter(count == max(count)) %>%
+  ungroup()
+
+
+#tile viz
+
+MoDowTile <- CyclisticData %>%
+  group_by(member_casual, Month, dow) %>%
+  summarise(no_rides = n()) %>%
+  ggplot() +
+  geom_tile(mapping = aes(x = Month, 
+                          y = dow,
+                          fill = no_rides)) +
+  facet_grid(rows = vars(member_casual)) +
+  theme_minimal() +
+  labs(title = "Number of rides by day and month by each type of customer",
+       subtitle = "from Nov. 2020 to Oct. 2021",
+       x = "month",
+       y = NULL,
+       fill = "Number of rides") +
+  scale_fill_viridis(option = "viridis") + 
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 5.5),
+        axis.text.y = element_text(hjust=1))
+
+hodtiles <- CyclisticData %>%
+  group_by(member_casual, dow, hour) %>%
+  summarise(no_rides = n()) %>%
+  ggplot() +
+  geom_tile(mapping = aes(x = hour, 
+                          y = dow,
+                          fill = no_rides)) +
+  facet_grid(rows = vars(member_casual)) +
+  theme_minimal() +
+  labs(title = "Number of rides by hour of each day by each type of customer",
+       subtitle = "from Nov. 2020 to Oct. 2021",
+       x = "hour",
+       y = NULL,
+       fill = "Number of rides") +
+  scale_fill_viridis(option = "viridis") + 
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 5.5),
+        axis.text.y = element_text(hjust=1))
+
+
+```
+
+## Key Findings
+
+Las 12 months trend in user type and number of rides.
+
+NoRidesMonth
+
+RideDuration
+
+DayTraffic
+
+DurationTraffic
+
+map365
+
+casual100
+member100
+
+
+
+
+## Top three recommendations based on your analysis
+

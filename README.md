@@ -12,3 +12,6 @@ Deliverables:
 5) Supporting visualizations and key findings
 6) Top 3 recommendations based on analysis
 
+
+Report (1,2,4:6) here.
+Data cleaning process (3) here
