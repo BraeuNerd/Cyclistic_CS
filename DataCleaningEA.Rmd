@@ -1,8 +1,14 @@
 ---
 title: "Data cleaning"
 author: "Maria Braeuner"
-date: "11/22/2021"
-output: html_document
+date: "2021"
+output:
+  pdf_document: 
+  df_print: kable
+  highlight: tango
+  fontsize: 11pt
+  geometry: margin=1in
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -18,8 +24,10 @@ library(lubridate) #date functions
 
 The first part of this document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis. The second part is the initial exploratory analysis. Final analysis/results in CS1_Cyclistic_Report.Rmd. 
 
-### Preparing
-#### Import Data
+## Preparing  
+
+**Import Data**
+
 
 ```{r LoadData, results="hide", warning=FALSE, message=FALSE}
 
@@ -58,13 +66,20 @@ colnames(Nov20) == colnames(Oct21)
 The data available for each df: `r colnames(Nov20)`
 
 
-### Merge Data 
+
+#### Merge Data  
+
+\n
+
+Merge 12 datasets into one.
+
 ```{r MergeData, results="hide", warning=FALSE, message=FALSE}
 
 #Merge into one df
 cyclistic12 <- rbind(Nov20, Dec20, Jan21, Feb21,
                      Mar21, Apr21, May21, Jun21,
                      Jul21, Ago21, Sep21, Oct21)
+
 #Check:
 head(cyclistic12)
 tail(cyclistic12)
@@ -72,27 +87,31 @@ dim(cyclistic12) # 5,378,834 x 13
 
 ```
 
-```{r tib1} 
 
-head(cyclistic12)
 
-```
+## Clean & prepare data for analysis
 
-### Clean & prepare data for analysis
 
-```{r CleanData, message=FALSE, warning=FALSE, results="hide"}
+```{r checkdata, message=FALSE, warning=FALSE, results="hide"}
 
 #check for data types
 glimpse(cyclistic12) #rideable_type & member_casual are as chr, change to factors
 cyclistic12$rideable_type <- as.factor(cyclistic12$rideable_type)
 cyclistic12$member_casual <- as.factor(cyclistic12$member_casual)
 glimpse(cyclistic12) #ok
+```
 
+```{r Sum}
 summary(cyclistic12)
-#ended_at includes 3 days of November 2021 (remove)
-#end_lat & end_lang have 4831 NA's
-#rideable_type categories: classic_bike, docked_bike, electric_bike
-#member_casual categories: member & casual
+```
+
+
+* ended_at includes 3 days of November 2021 (remove)
+* end_lat & end_lang have 4831 NA's
+* rideable_type categories: classic_bike, docked_bike, electric_bike
+* member_casual categories: member & casual
+
+```{r CleanData, message=FALSE, warning=FALSE, results="hide"}
 
 length(unique(cyclistic12$start_station_name)) #check how many stations (815)
 length(unique(cyclistic12$end_station_name)) #check how many stations (812)
@@ -204,7 +223,7 @@ CyclisticData$season <- ordered(CyclisticData$season,
 
 ```
 
-Keep in mind for analysis:  
+**Keep in mind for analysis:**  
 
 
 * Rideable_type for November 2020 includes only 2 categories: docked and electric; "classic_bike" appears from December 2020 onward.
