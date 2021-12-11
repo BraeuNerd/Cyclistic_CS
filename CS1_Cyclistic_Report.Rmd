@@ -1,9 +1,13 @@
 ---
-title: "Cyclistic DA Report"
+title: "Cyclistic DA Report - with code"
 author: "Maria Braeuner"
-date: "11/22/2021"
-output: html_document
+date: "Nov 2021"
+output:
+  pdf_document: default
+  html_document: default
+urlcolor: blue
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -11,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r LoadPackagesAndData, echo= T, error=F, warning=F, message=G, results="hide"}
+```{r LoadPackagesAndData, echo= T, error=F, warning=F, message=F, results="hide"}
 
 library(tidyverse)
 library(ggmap)
@@ -28,7 +32,8 @@ CyclisticData <- read_csv("Data/CyclisticData.csv",
                             tod_char = col_factor()
                           ))
 
-#set color palette for plots
+#colors for discretes (for some reason I cannot make the viridis work for some plots)
+
 cols <- c("casual" = "#482677ff", "member" = "#b8de29ff")
 
 ```
@@ -39,26 +44,39 @@ cols <- c("casual" = "#482677ff", "member" = "#b8de29ff")
 Cyclistic is a (fictional) bike-share company based in Chicago. More than recruiting new customers to use Cyclistic, **there is a current interest in turning casual customers into annual members.** To support marketing strategies, we must first understand customer behavior. My task here is to gain insights and identify how casual riders and annual members use Cyclistic differently to support marketing decisions.
 
 ## Description of data & cleaning process
-The company provides the historical trip data. The downloadable public data set has been made available by Motivate International Inc under a non-exclusive, royalty-free, limited, perpetual [license](https://www.divvybikes.com/data-license-agreement).
+The company provides the historical rides data. The downloadable public data set has been made available by Motivate International Inc under a non-exclusive, royalty-free, limited, perpetual [license](https://www.divvybikes.com/data-license-agreement).
 
 The data used in this report corresponds to the last 12 months (November 2020 to October 2021). The raw data is organized in separate csv files, each one corresponding to one month of data, which includes the following columns: `r colnames(CyclisticData)`.
 
 I performed this entire task using R & RStudio. First I merged the 12 datasets into one data frame, corrected data types (e.g. casual_member from character to factor), & added columns that would help for further analysis (e.g. ride duration, time of day, day of the week, & season). Initially, there were several rows in which the company performed tests to the bikes, where "TEST" was part of the station_id or station names. These rows were removed. Detailed documentation of all [cleaning & manipulation of data can be found here](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/DataCleaningEA.Rmd)
 
+
 ## Summary of analysis & visualizations
 
-```{r quickfix, message=FALSE, warning=FALSE, results="hide"}
+
+
+
+```{r overview}
 
 glimpse(CyclisticData)
 
+```
+
+
+
+```{r quickfix, echo= T, error=F, warning=F, message=F, results="hide"}
+
+#Order some vars for better display
+
 ##order dow by dow instead of alphabetically:
-CyclisticData$dow <- ordered(CyclisticData$dow, levels=c("Monday",
-                                                         "Tuesday",
-                                                         "Wednesday",
-                                                         "Thursday",
-                                                         "Friday",
-                                                         "Saturday",
-                                                         "Sunday"))
+CyclisticData$dow <- ordered(CyclisticData$dow, 
+                             levels=c("Monday",
+                                      "Tuesday",
+                                      "Wednesday",
+                                      "Thursday",
+                                      "Friday",
+                                      "Saturday",
+                                      "Sunday"))
 
 #order season
 CyclisticData$season <- ordered(CyclisticData$season,
@@ -75,34 +93,25 @@ CyclisticData$tod_char <- ordered(CyclisticData$tod_char,
                                            "Night"))
 
 #order month
-
 CyclisticData$month <- ordered(CyclisticData$month,
-                                  levels=c("11",
-                                           "12",
-                                           "1",
-                                           "2",
-                                           "3",
-                                           "4",
-                                           "5", 
-                                           "6", 
-                                           "7", 
-                                           "8",
-                                           "9",
-                                           "10"))
+                                  levels=c("11","12","1",
+                                           "2","3","4",
+                                           "5","6","7", 
+                                           "8","9","10"))
 
 CyclisticData <- CyclisticData %>%
   mutate(Month = ifelse(month == 11, "Nov20",
-                        ifelse(month == 12, "Dec20",
-                               ifelse(month == 1, "Jan21",
-                                      ifelse(month == 2, "Feb21",
-                                             ifelse(month == 3, "Mar21", 
-                                                    ifelse(month == 4, "Apr21", 
-                                                           ifelse(month == 5, "May21",
-                                                                  ifelse(month == 6, "Jun21", 
-                                                                         ifelse(month == 7, "Jul21", 
-                                                                                ifelse(month == 8, "Aug21",
-                                                                                       ifelse(month == 9, "Sep21",
-                                                                                              ifelse(month == 10, "Oct21", "ERR")))))))))))))
+                    ifelse(month == 12, "Dec20",
+                       ifelse(month == 1, "Jan21",
+                          ifelse(month == 2, "Feb21",
+                             ifelse(month == 3, "Mar21", 
+                                ifelse(month == 4, "Apr21", 
+                                   ifelse(month == 5, "May21",
+                                      ifelse(month == 6, "Jun21", 
+                                         ifelse(month == 7, "Jul21", 
+                                            ifelse(month == 8, "Aug21",
+                                               ifelse(month == 9, "Sep21",
+                                                  ifelse(month == 10, "Oct21", "ERR")))))))))))))
 
 CyclisticData$Month <- ordered(CyclisticData$Month,
                                levels=c("Nov20", "Dec20", "Jan21",
@@ -117,18 +126,23 @@ CyclisticData <- CyclisticData %>%
 
 ```
 
-```{r analysis}
+```{r analysis, echo= T, error=F, warning=F, message=F, results="hide"}
+
+#Data Viz
+
+#Number of rides per month & bike preference by customer
 
 NoRidesMonth <- CyclisticData %>%
   group_by(member_casual, rideable_type, Month) %>%
   summarise(no_rides = n(),
             avg_ride_duration = mean(ride_length_min)) %>%
   ggplot() +
-  geom_col(mapping = aes(x = Month, y = no_rides, fill=member_casual)) +
+  geom_col(mapping = aes(x = Month, y = no_rides, fill=member_casual),
+           color = "black") +
   theme_minimal() +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 90)) +
-  labs(title = "Number of rides by type of customer and bike used",
+  labs(title = "1. Number of rides by type of customer and bike used",
        subtitle = "from November 2020 to October 2021",
        x = "Month", 
        y = "Number of rides") +
@@ -155,7 +169,7 @@ RideDuration <- CyclisticData %>%
   scale_fill_manual(values = cols) +
   theme_minimal() +
   theme(legend.position = "none") +
-  labs(title = "Histogram of number of rides by their duration for each type of customer",
+  labs(title = "2. Histogram of number of rides by their duration for each type of customer",
        subtitle = "from November 2020 to October 2021",
        caption = "Only depicting rides under 60 minutes \n (5min bins)",
        x = "minutes", 
@@ -246,7 +260,7 @@ map365 <- ggmap(chicagomap) +
              color = "#4f759b") +
   facet_grid(~ member_casual) + 
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "Customer travel routes") + 
+       title = "3. Customer travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
   theme(legend.position = "none")
@@ -290,7 +304,7 @@ casual100 <- ggmap(chicagozoom) +
              alpha = 0.5,
              color = "#4f759b") +
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "Casual customer 100 most used travel routes") + 
+       title = "4. Casual customer 100 most used travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
   theme(legend.position = "none")
@@ -315,7 +329,7 @@ member100 <- ggmap(chicagozoom) +
              alpha = 0.5,
              color = "#4f759b") +
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "Members 100 most used travel routes") + 
+       title = "5. Members 100 most used travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
   theme(legend.position = "none")
@@ -349,7 +363,7 @@ MoDowTile <- CyclisticData %>%
                           fill = no_rides)) +
   facet_grid(rows = vars(member_casual)) +
   theme_minimal() +
-  labs(title = "Number of rides by day and month by each type of customer",
+  labs(title = "6. Number of rides by day and month by each type of customer",
        subtitle = "from Nov. 2020 to Oct. 2021",
        x = "month",
        y = NULL,
@@ -368,7 +382,7 @@ hodtiles <- CyclisticData %>%
                           fill = no_rides)) +
   facet_grid(rows = vars(member_casual)) +
   theme_minimal() +
-  labs(title = "Number of rides by hour of each day by each type of customer",
+  labs(title = "7. Number of rides by hour of each day by each type of customer",
        subtitle = "from Nov. 2020 to Oct. 2021",
        x = "hour",
        y = NULL,
@@ -379,27 +393,79 @@ hodtiles <- CyclisticData %>%
         axis.text.y = element_text(hjust=1))
 
 
+
 ```
 
 ## Key Findings
 
-Las 12 months trend in user type and number of rides.
+
+* Generally speaking, casual riders seem to use the bike rental service more for leisure while annual members use it as a daily commute to/from work.
+
+
+```{r SumStats, echo=T, error=F, warning=F, message=F}
+
+mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+SumStats <- CyclisticData %>%
+  group_by(member_casual) %>%
+  summarise(no_rides = n(),
+            avg_duration_minutes = mean(ride_length_min),
+            TopHour = mode(hour),
+            TopDay = mode(dow),
+            TopMonth = mode(Month),
+            TopSeason = mode(season))
+
+SumStats
+```
+
+
+
+* Both classic and electronic bikes seem to be the preferred ride type for both customer groups (figure 1). 
+
+```{r echo= T, error=F, warning=F, message=F}
+#Las 12 months trend in user type and number of rides.
 
 NoRidesMonth
 
+```
+
+
+* Casual users seem to take on average longer rides when compared to annual members (table 1; figure 2); casual users are also mostly heading to/from stations near the Navy Pier (figures 3L & 4), while annual members take shorter routes within the city and outskirts (figures 3R & 5).
+
+```{r echo= T, error=F, warning=F, message=F}
 RideDuration
-
-DayTraffic
-
-DurationTraffic
 
 map365
 
 casual100
+
 member100
+```
 
 
 
+* For both casual users and members Winter time is when there is less use of the bike rental services, which starts to increase from early Spring and peaks during Summer (table 1; figure 6). Casual riders are using the bikes more on the weekends, particularly weekend afternoons, while annual members seem to use it regularly on the weekdays between 06:00-09:00 and 16:00-18:00 (figure 7). 
 
-## Top three recommendations based on your analysis
 
+```{r echo= T, error=F, warning=F, message=F}
+
+MoDowTile
+
+hodtiles
+
+
+```
+
+
+
+## Top three recommendations
+
+Based on the previous analysis, it seems safe to assume that casual users are using the service more for leisure and annual members as daily (weekdays) commute. To turn casual customers into annual members, the following could be recommended to the marketing team:
+
+
+* In case casual users haven't considered a non-touristic use of the service, start a late-Winter or early-Spring marketing campaign that addresses bike usage as commute for health and environmental reasons.
+* Summer and/or weekend promotions around the Navy Pier since casual riders are more active there and during the weekends. 
+* Offering member-only discount options based on trip length/duration could incentivize casual users to opt for a membership.
