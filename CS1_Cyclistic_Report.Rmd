@@ -1,16 +1,19 @@
 ---
-title: "Cyclistic DA Report - with code"
-author: "Maria Braeuner"
-date: "Nov 2021"
 output:
   pdf_document: default
   html_document: default
 urlcolor: blue
 ---
 
+# Cyclistic Capstone Project for GDAC Report - with code
+by María Braeuner
+2021
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.width = 8,
+                      fig.asp = 0.8,
+                      out.width = "100%")
 
 ```
 
@@ -32,8 +35,6 @@ CyclisticData <- read_csv("Data/CyclisticData.csv",
                             tod_char = col_factor()
                           ))
 
-#colors for discretes (for some reason I cannot make the viridis work for some plots)
-
 cols <- c("casual" = "#482677ff", "member" = "#b8de29ff")
 
 ```
@@ -52,8 +53,6 @@ I performed this entire task using R & RStudio. First I merged the 12 datasets i
 
 
 ## Summary of analysis & visualizations
-
-
 
 
 ```{r overview}
@@ -137,19 +136,23 @@ NoRidesMonth <- CyclisticData %>%
   summarise(no_rides = n(),
             avg_ride_duration = mean(ride_length_min)) %>%
   ggplot() +
-  geom_col(mapping = aes(x = Month, y = no_rides, fill=member_casual),
-           color = "black") +
-  theme_minimal() +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 90)) +
-  labs(title = "1. Number of rides by type of customer and bike used",
-       subtitle = "from November 2020 to October 2021",
+  geom_col(mapping = aes(x = Month, y = no_rides, fill=member_casual)) +
+  labs(caption = "Figure 1. Number of rides by type of customer (casual rider or member) \n and bike used (electric, docked, classic) from November 2020 to October 2021",
        x = "Month", 
        y = "Number of rides") +
   scale_y_continuous(labels = scales::comma) +
   scale_fill_manual(values = cols) +
-#  scale_color_viridis(discrete=T, option="viridis") + 
-  facet_grid(rideable_type ~ member_casual) 
+  facet_grid(rideable_type ~ member_casual) +
+  theme(legend.position = "none",
+        plot.background = element_rect(fill="#ffffff"),
+        panel.background = element_rect(fill="#ffffff"),
+        plot.caption = element_text(hjust=0),
+        plot.margin = margin(10, 50, 10, 40),
+        panel.grid.major.y = element_line(color = "grey70", size=0.1, linetype=2),
+        axis.text.x = element_text(color = "#61605D", size = 8, margin = margin(10,0,0,0), angle = 90),
+        axis.text.y = element_text(color = "#61605D", size = 10),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank())
 
 
 #Ride duration histogram for rides less than 24 hours long (3677 rows still over 24h)
@@ -164,21 +167,29 @@ RideDuration <- CyclisticData %>%
   filter(ride_length_min <= 60) %>%
   ggplot() +
   geom_histogram(mapping = aes(x = ride_length_min, fill=member_casual),
-                 binwidth = 5,
-                 color = "black") +
+                 binwidth = 1,
+                 color="white") +
   scale_fill_manual(values = cols) +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  labs(title = "2. Histogram of number of rides by their duration for each type of customer",
-       subtitle = "from November 2020 to October 2021",
-       caption = "Only depicting rides under 60 minutes \n (5min bins)",
-       x = "minutes", 
+  labs(caption = "Figure 2. Number of rides by their duration for each type of customer from \n November 2020 to October 2021 (only depicting rides under 60 minutes)",
+       x = "Minutes", 
        y = "Number of rides") +
-  scale_y_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma,
+                     expand = c(0,0)) +
+  scale_x_continuous(breaks = seq(0,60,5)) +
   facet_grid(~ member_casual) +
   geom_text(data = hist_lab,
-            mapping = aes(x = 50, y = 755500, label=n), 
-            size = 3.5)
+            mapping = aes(x = 50, y = 165500, label=n), 
+            size = 3.5) +
+  theme(legend.position = "none",
+        plot.background = element_rect(fill="#ffffff"),
+        panel.background = element_rect(fill="#ffffff"),
+        plot.margin = margin(10, 50, 0, 40),
+        plot.caption = element_text(hjust=0),
+        panel.grid = element_blank(),
+        panel.grid.major.y = element_line(color = "grey70", size=0.1, linetype=2),
+        axis.text.x = element_text(color = "#61605D", size = 8, margin = margin(5,0,0,0)),
+        axis.text.y = element_text(color = "#61605D", size = 10),
+        axis.ticks.y = element_blank())
 
 #Traffic by day
 
@@ -260,10 +271,16 @@ map365 <- ggmap(chicagomap) +
              color = "#4f759b") +
   facet_grid(~ member_casual) + 
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "3. Customer travel routes") + 
+       caption = "Figure 3. Customer travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.margin = margin(10, 50, 10, 40),
+        plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(color = "#61605D", size = 8),
+        axis.text.y = element_text(color = "#61605D", size = 8),
+        axis.ticks.y = element_blank())
+
 
 #Top routes
 toproutes_casual <- formapfiltered %>%
@@ -304,10 +321,15 @@ casual100 <- ggmap(chicagozoom) +
              alpha = 0.5,
              color = "#4f759b") +
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "4. Casual customer 100 most used travel routes") + 
+       caption = "Figure 4. Casual customer 100 most used travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.margin = margin(10, 50, 10, 40),
+        plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(color = "#61605D", size = 8),
+        axis.text.y = element_text(color = "#61605D", size = 8),
+        axis.ticks.y = element_blank())
 
 member100 <- ggmap(chicagozoom) +
   geom_segment(toproutes_member,
@@ -329,10 +351,15 @@ member100 <- ggmap(chicagozoom) +
              alpha = 0.5,
              color = "#4f759b") +
   labs(x = NULL, y = NULL, fill = NULL, 
-       title = "5. Members 100 most used travel routes") + 
+       caption = "Figure 5. Members 100 most used travel routes") + 
   theme_minimal() +
   scale_colour_viridis(option = "viridis") + 
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.margin = margin(10, 50, 10, 40),
+        plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(color = "#61605D", size = 8),
+        axis.text.y = element_text(color = "#61605D", size = 8),
+        axis.ticks.y = element_blank())
 
 
 TopStartStation <- CyclisticData %>%
@@ -363,15 +390,18 @@ MoDowTile <- CyclisticData %>%
                           fill = no_rides)) +
   facet_grid(rows = vars(member_casual)) +
   theme_minimal() +
-  labs(title = "6. Number of rides by day and month by each type of customer",
-       subtitle = "from Nov. 2020 to Oct. 2021",
-       x = "month",
+  labs(caption = "Figure 6. Number of rides by day and month by each type of customer from Nov. 2020 to Oct. 2021",
+       x = "Month",
        y = NULL,
        fill = "Number of rides") +
   scale_fill_viridis(option = "viridis") + 
   theme(legend.position = "bottom",
         legend.text = element_text(size = 5.5),
-        axis.text.y = element_text(hjust=1))
+        plot.caption = element_text(hjust=0),
+        plot.margin = margin(10, 50, 10, 40),
+        axis.text.x = element_text(color = "#61605D", size = 8),
+        axis.text.y = element_text(color = "#61605D", size = 10, hjust=1),
+        axis.ticks.y = element_blank())
 
 hodtiles <- CyclisticData %>%
   group_by(member_casual, dow, hour) %>%
@@ -382,16 +412,18 @@ hodtiles <- CyclisticData %>%
                           fill = no_rides)) +
   facet_grid(rows = vars(member_casual)) +
   theme_minimal() +
-  labs(title = "7. Number of rides by hour of each day by each type of customer",
-       subtitle = "from Nov. 2020 to Oct. 2021",
-       x = "hour",
+  labs(caption = "Figure 7. Number of rides by hour of each day by each type of customer from Nov. 2020 to Oct. 2021",
+       x = "Hour",
        y = NULL,
        fill = "Number of rides") +
   scale_fill_viridis(option = "viridis") + 
   theme(legend.position = "bottom",
         legend.text = element_text(size = 5.5),
-        axis.text.y = element_text(hjust=1))
-
+        plot.caption = element_text(hjust=0),
+        plot.margin = margin(10, 50, 10, 40),
+        axis.text.x = element_text(color = "#61605D", size = 8),
+        axis.text.y = element_text(color = "#61605D", size = 10, hjust=1),
+        axis.ticks.y = element_blank())
 
 
 ```

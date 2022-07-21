@@ -16,3 +16,4 @@ Deliverables:
 Final report (1,2,4:6) [here](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/CS1_Cyclistic_Report_NoCode.pdf)  ([with code here as pdf](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/CS1_Cyclistic_Report.pdf) or [Rmd](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/CS1_Cyclistic_Report.Rmd)).  
 
 Data cleaning process (3) [here in .Rmd](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/DataCleaningEA.Rmd) or [as pdf](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/DataCleaningEA.pdf).  
+

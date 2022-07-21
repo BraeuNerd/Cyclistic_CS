@@ -1,20 +1,31 @@
 ---
-title: "Data cleaning"
-author: "Maria Braeuner"
-date: "2021"
 output:
   pdf_document: 
+  sansfont: Calibri Light
   df_print: kable
   highlight: tango
   fontsize: 11pt
   geometry: margin=1in
   html_document: default
+  
 ---
 
+# Data Cleaning - Cyclistic Capstone Project for GDAC
+by María Braeuner
+2021
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.width = 6,
+                      fig.asp = 0.8,
+                      out.width = "80%")
 ```
 
+The first part of this document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis. The second part is the initial exploratory analysis. Final analysis/results in *[CS1_Cyclistic_Report.Pdf](https://github.com/BraeuNerd/Cyclistic_CS/blob/main/CS1_Cyclistic_Report_NoCode.pdf)*.
+
+## Preparing  
+
+### Load Necessary Packages
 ```{r LoadPackages, results="hide", warning=FALSE, message=FALSE}
 
 library(tidyverse) 
@@ -22,11 +33,8 @@ library(lubridate) #date functions
 
 ```
 
-The first part of this document details the steps to clean, transform & prepare the raw data from Cyclistic for analysis. The second part is the initial exploratory analysis. Final analysis/results in CS1_Cyclistic_Report.Rmd. 
 
-## Preparing  
-
-**Import Data**
+### Import Data
 
 
 ```{r LoadData, results="hide", warning=FALSE, message=FALSE}
@@ -47,7 +55,7 @@ Sep21 <- read_csv("Data/202109-divvy-tripdata.csv")
 Oct21 <- read_csv("Data/202110-divvy-tripdata.csv")
 
 #Check all df's have the same structure: check if all column names
-#are the same (e.g. would make it easier to merge into one dataframe)
+#are the same (e.g. to make it easier to merge into one dataframe)
 colnames(Nov20) == colnames(Dec20)
 colnames(Nov20) == colnames(Jan21)
 colnames(Nov20) == colnames(Feb21)
@@ -59,23 +67,21 @@ colnames(Nov20) == colnames(Jul21)
 colnames(Nov20) == colnames(Ago21)
 colnames(Nov20) == colnames(Sep21)
 colnames(Nov20) == colnames(Oct21)
-# all TRUE
+# all TRUE - looks good
 
 ```
 
 The data available for each df: `r colnames(Nov20)`
 
+\newpage
 
+### Merge Data  
 
-#### Merge Data  
-
-\n
 
 Merge 12 datasets into one.
 
 ```{r MergeData, results="hide", warning=FALSE, message=FALSE}
 
-#Merge into one df
 cyclistic12 <- rbind(Nov20, Dec20, Jan21, Feb21,
                      Mar21, Apr21, May21, Jun21,
                      Jul21, Ago21, Sep21, Oct21)
@@ -88,7 +94,6 @@ dim(cyclistic12) # 5,378,834 x 13
 ```
 
 
-
 ## Clean & prepare data for analysis
 
 
@@ -98,15 +103,16 @@ dim(cyclistic12) # 5,378,834 x 13
 glimpse(cyclistic12) #rideable_type & member_casual are as chr, change to factors
 cyclistic12$rideable_type <- as.factor(cyclistic12$rideable_type)
 cyclistic12$member_casual <- as.factor(cyclistic12$member_casual)
-glimpse(cyclistic12) #ok
+glimpse(cyclistic12) #looks ok
 ```
 
-```{r Sum}
+```{r Sum, size = "small"}
 summary(cyclistic12)
 ```
 
+**Important details to note:**  
 
-* ended_at includes 3 days of November 2021 (remove)
+* ended_at includes 3 days of November 2021 (remove these)
 * end_lat & end_lang have 4831 NA's
 * rideable_type categories: classic_bike, docked_bike, electric_bike
 * member_casual categories: member & casual
@@ -244,10 +250,13 @@ Save cleaned data into a new .csv file.
 
 #CyclisticData <- write.csv(CyclisticData, "Data/CyclisticData.csv")
 
+#ForTableau <- CyclisticData[-c(), ]
+
 ```
 
+\newpage
 
-# Exploratory Analysis
+# Exploratory Data Analysis
 
 ```{r, tidy=TRUE}
 
@@ -256,7 +265,7 @@ head(CyclisticData)
 ```
 
 How do casual customers and members differ in # of rides & average ride duration (in minutes)?
-```{r EA1, warning=FALSE, message=FALSE, tidy=TRUE}
+```{r EA1, warning=FALSE, message=FALSE, tidy=TRUE, results="hide"}
 
 ## Ride length ($ride_length &/or $ride_length_min)
 
@@ -268,7 +277,7 @@ CyclisticData %>%
 ```
 
 How do casual customers and members differ in # of rides & average ride duration (in minutes) by ride_type used?
-```{r EA2, warning=FALSE, message=FALSE, tidy=TRUE}
+```{r EA2, warning=FALSE, message=FALSE, tidy=TRUE, results="hide"}
 ## Type of ride they use ($rideable_type)
 CyclisticData %>%
   group_by(member_casual, rideable_type) %>%
@@ -279,7 +288,7 @@ CyclisticData %>%
 
 How do casual customers and members differ in # of rides & average ride duration (in minutes) by season?
 
-```{r EA3, warning=FALSE, message=FALSE, tidy=TRUE}
+```{r EA3, warning=FALSE, message=FALSE, tidy=TRUE, results="hide"}
 ## Use by $season
 CyclisticData %>%
   group_by(member_casual, season) %>%
@@ -289,7 +298,7 @@ CyclisticData %>%
 ```
 
 How do casual customers and members differ in # of rides & average ride duration (in minutes) by time of day?
-```{r EA4, warning=FALSE, message=FALSE, tidy=TRUE}
+```{r EA4, warning=FALSE, message=FALSE, tidy=TRUE, results="hide"}
 ## Use by $tod ($tod_char)
 CyclisticData %>%
   group_by(member_casual, tod_char) %>%
@@ -300,7 +309,7 @@ CyclisticData %>%
 
 How do casual customers and members differ in # of rides & average ride duration (in minutes) by day of the week?
 
-```{r EA5, warning=FALSE, message=FALSE, tidy=TRUE}
+```{r EA5, warning=FALSE, message=FALSE, tidy=TRUE, results="hide"}
 ## Use by $dow
 CyclisticData %>%
   group_by(member_casual, dow) %>%
@@ -317,7 +326,8 @@ CyclisticData %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = dow, y = avg_duration_min, fill = member_casual)) +
-  geom_col(position="dodge")
+  geom_col(position="dodge") + 
+  theme(legend.position="top")
 
 
 CyclisticData %>%
@@ -325,7 +335,8 @@ CyclisticData %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = dow, y = no_rides, fill = member_casual)) +
-  geom_col(position="dodge")
+  geom_col(position="dodge") + 
+  theme(legend.position="top")
 
 
 CyclisticData %>%
@@ -333,14 +344,16 @@ CyclisticData %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = tod_char, y = avg_duration_min, fill = member_casual)) +
-  geom_col(position="dodge")
+  geom_col(position="dodge") + 
+  theme(legend.position="top")
 
 CyclisticData %>%
   group_by(member_casual, tod_char) %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = tod_char, y = no_rides, fill = member_casual)) +
-  geom_col(position="dodge")
+  geom_col(position="dodge") + 
+  theme(legend.position="top")
 
 
 
@@ -349,7 +362,8 @@ CyclisticData %>%
   summarise(no_rides = n(),
            avg_duration_min = mean(ride_length_min)) %>%
   ggplot(mapping = aes(x = season, y = no_rides, fill = member_casual)) +
-  geom_col(position="dodge")
+  geom_col(position="dodge") + 
+  theme(legend.position="top")
 
 
 
